@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import requests
 import socketserver
@@ -13,37 +14,53 @@ from socket import getfqdn
 from threading import Lock
 from typing import List
 
+from xrdLabels import XrdKey
+
+try:
+    import influxdb_client
+    from influxdb_client import InfluxDBClient, Point, WritePrecision
+    from influxdb_client.client.write_api import SYNCHRONOUS
+except ImportError:
+    pass # slience for now
+
 class Observer():
+    # Note Observers are required to be thread-safe
     def serve(self,data: dict):
         pass
 
 class LoggerObserver(Observer):
-    def __init__(self, level=logging.INFO):
+    def __init__(self, params):
         super().__init__()
-        self.level = level
+        self.level = getattr(logging, params['level'].upper()) # e.g. INFO
 
     def serve(self, data: dict):
         logging.log(self.level,data)
+    def __str__(self):
+        return "Logger({})".format(logging.getLevelName(self.level))
 
 class SummaryLoggerObserver(Observer):
-    fields = ['src','pgm','ins','link__num']
-    def __init__(self, level=logging.INFO):
+    fields = ['src','pgm','ins','link__num','tod','sgen__toe','delta_s','sgen__et','link__in','delta_link__in']
+    def __init__(self, params):
         super().__init__()
-        self.level = level
+        self.level = getattr(logging, params['level'].upper()) # e.g. INFO
 
     def serve(self, data: dict):
         d = {k: data.get(k,"N/A") for k in self.fields}
         logging.log(self.level,"{}".format(d))
+    def __str__(self):
+        return "SummaryLogger({})".format(logging.getLevelName(self.level))
 
 
 class FileObserver(Observer):
-    def __init__(self, filename):
+    def __init__(self, params):
         super().__init__()
-        self.filename = filename
+        self.filename = params['filename']
     def serve(self, data: dict):
         with Lock():
             with open(self.filename,'a') as foo:
                 foo.write("{}\n".format(json.dumps(data)))
+    def __str__(self):
+        return "File(\"{}\")".format(self.filename)
 
 
 class ElasticSearchObserver(Observer):
@@ -96,3 +113,53 @@ class ElasticSearchObserver(Observer):
             #logging.debug(f'ES data result {req.status_code}' )
         except Timeout:
             logging.warning("ES data submission hit timeout")
+
+
+class InfluxDB2Observer(Observer):
+    def __init__(self, params: dict):
+        self.bucket = params['bucket']
+        self.measurement = params['measurement'] # influx measurement name
+        self.tags = [XrdKey.INFO_HOST, XrdKey.INFO_PORT, XrdKey.INFO_NAME, 
+                XrdKey.SITE, XrdKey.PGM,XrdKey.VER]
+        self.excluded = self.tags + [XrdKey.SRC, XrdKey.INS, XrdKey.PID]
+        self.connection_param = { 'token': params['token'] if 'token' in params else  os.environ.get(params['token_env']),
+                'org': params['org'], 
+                'url': params['url'], 
+            }
+
+    def _write_data(self, records):
+        data =[]
+        for item in records:
+            v ="{},".format(self.measurement) # measrurment
+            v += ','.join( "{}={}".format(k,v) for k,v in item['tags'].items() ) # tags
+            v += " "
+            v += ','.join( "{}={}".format(k,v) for k,v in item['fields'].items() ) # fields
+            v += ' {}\n'.format(item['timestamp']) # time
+            data.append(v)
+
+        with InfluxDBClient(**self.connection_param) as client:
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            write_api.write(bucket=self.bucket, org=self.connection_param['org'], record=data)
+
+
+    def serve(self, data: dict):
+        tags = {k:f'{data[k]}' for k in self.tags if k in data}
+        tags['reporthost'] = getfqdn()
+
+        fields = {}
+        for k,v in data.items():
+            if k in self.excluded:
+                continue
+            fields[k] = f'\"{v}\"' if type(v) == str else v
+
+        timestamp = int(data[XrdKey.TOD]*1e9)
+
+        self._write_data(records=[{'tags':tags,
+                                    'timestamp':timestamp,
+                                    'fields':fields}])
+
+    def __str__(self):
+        return "InfluxDB2({}, {}, {})".format(self.connection_param['url'], self.bucket, self.measurement)
+
+
+        
