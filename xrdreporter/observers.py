@@ -23,6 +23,12 @@ try:
 except ImportError:
     pass # slience for now
 
+try:
+    import influxdb as influxdbv1
+except ImportError:
+    pass # slience for now
+
+
 class Observer():
     # Note Observers are required to be thread-safe
     def serve(self,data: dict):
@@ -118,20 +124,30 @@ class ElasticSearchObserver(Observer):
 
 class InfluxDB2Observer(Observer):
     def __init__(self, params: dict):
-        self.bucket = params['bucket']
         self.measurement = params['measurement'] # influx measurement name
         self.tags = [XrdKey.INFO_HOST, XrdKey.INFO_PORT, XrdKey.INFO_NAME, 
                 XrdKey.SITE, XrdKey.PGM,XrdKey.VER]
         self.excluded = self.tags + [XrdKey.SRC, XrdKey.INS, XrdKey.PID]
-        self.connection_param = { 'token': params['token'] if 'token' in params else  os.environ.get(params['token_env']),
-                'org': params['org'], 
-                'url': params['url'], 
-            }
+        if 'api' in params and params['api'] == 'v1':
+            self.api = 'v1'
+            self.connection_param = {'host':params['host'],
+                                     'port':int(params['port']),
+                                     'username':params['username'],
+                                     'password':params['password'],
+                                     'database':params['database']
+                                     }
+        else:
+            self.api = 'v2'
+            self.bucket = params['bucket']
+            self.connection_param = { 'token': params['token'] if 'token' in params else  os.environ.get(params['token_env']),
+                    'org': params['org'], 
+                    'url': params['url'], 
+                }
 
     def _write_data(self, records):
         data =[]
         for item in records:
-            v ="{},".format(self.measurement) # measrurment
+            v ="{},".format(self.measurement) # measurement
             v += ','.join( "{}={}".format(k,v) for k,v in item['tags'].items() ) # tags
             v += " "
             v += ','.join( "{}={}".format(k,v) for k,v in item['fields'].items() ) # fields
@@ -141,6 +157,24 @@ class InfluxDB2Observer(Observer):
         with InfluxDBClient(**self.connection_param) as client:
             write_api = client.write_api(write_options=SYNCHRONOUS)
             write_api.write(bucket=self.bucket, org=self.connection_param['org'], record=data)
+
+    def _write_data_v1(self, records):
+        data =[]
+        for item in records:
+            v = {'measurement': self.measurement, 
+                 'tags': item['tags'],
+                 'time': item['timestamp'],
+                 'fields': item['fields']
+            }
+        data.append(v)
+
+        # with influxdbv1.InfluxDBClient(**self.connection_param) as client:
+        #     client.write_points(data)
+        client = influxdbv1.InfluxDBClient(**self.connection_param)
+        client.write_points(data)
+        client.close()
+        
+
 
 
     def serve(self, data: dict):
@@ -155,12 +189,22 @@ class InfluxDB2Observer(Observer):
 
         timestamp = int(data[XrdKey.TOD]*1e9)
 
-        self._write_data(records=[{'tags':tags,
+        if self.api == 'v2':
+            self._write_data(records=[{'tags':tags,
                                     'timestamp':timestamp,
                                     'fields':fields}])
+        else:
+            self._write_data_v1(records=[{'tags':tags,
+                             'timestamp':timestamp,
+                             'fields':fields}])
+
 
     def __str__(self):
-        return "InfluxDB2({}, {}, {})".format(self.connection_param['url'], self.bucket, self.measurement)
+        if self.api == 'v2':
+            return "InfluxDB2({}, {}, {})".format(self.connection_param['url'], self.bucket, self.measurement)
+        else:
+            return "InfluxDBv1({}, {}, {})".format(self.connection_param['host'], self.connection_param['database'] 
+                                                  ,self.measurement)
 
 
         

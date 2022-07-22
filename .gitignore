@@ -1,4 +1,7 @@
 __pycache__
 *.pyc
 /dist
+/build
 config.cfg
+*.json
+*.egg-info
