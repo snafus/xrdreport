@@ -80,6 +80,8 @@ if __name__ == "__main__":
     # # dynamic loading of any components specified in the config file
     if args.config:
         MyUDPRequestHandler.observers.extend( create_observers(config) )
+        MyUDPRequestHandler.include_fields = config['DEFAULT'].get('include_fields',".*")
+        MyUDPRequestHandler.exclude_fields = config['DEFAULT'].get('exclude_fields',"")
 
     logging.debug("Configured Observers: \n\t{}".format( "\n\t".join(str(x) for x in MyUDPRequestHandler.observers)))
 

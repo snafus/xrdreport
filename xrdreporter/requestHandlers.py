@@ -43,13 +43,34 @@ def parse_dom(dataraw):
     return data
 
 
+def filter_stats(stats: dict, re_includes, re_excludes):
+    """filter the stats, based on lists of compiled re expressions"""
+    new_stats = {}
+    for k,v in stats.items():
+        for re_exp in re_excludes:
+            if re_exp.match(k) is not None:
+                #logging.debug("Excluded on match: {} {}".format(re_exp, k))
+                continue # exclude the key
+        for re_exp in re_includes:
+            if re_exp.match(k):
+                new_stats[k] = v
+                #logging.debug("Included on match: {} {}".format(re_exp, k))
+                continue # passed at least one match
+    return new_stats
+
+
+
 
 class MyUDPRequestHandler(socketserver.DatagramRequestHandler):
     observers = []
     do_deltas = False
     last_values = dict()
+    include_fields = ".*"
+    exclude_fields = ""
 
     def __init__(self,*args,**kwargs):
+        self._include_fields = [re.compile(x.strip()) for x in self.include_fields.split(",") if len(x)]
+        self._exclude_fields = [re.compile(x.strip()) for x in self.exclude_fields.split(",") if len(x)]
         super().__init__(*args,**kwargs)
 
     def _caclulate_deltas(self, stats: dict):
@@ -95,6 +116,8 @@ class MyUDPRequestHandler(socketserver.DatagramRequestHandler):
         except Exception as e:
             print (e)
             raise(e)
+
+        stats = filter_stats(stats, self._include_fields, self._exclude_fields)
 
         if self.do_deltas:
             # calculate the deltas, and set stats to new dict

@@ -43,6 +43,7 @@ class SummaryLoggerObserver(Observer):
     def __init__(self, params):
         super().__init__()
         self.level = getattr(logging, params['level'].upper()) # e.g. INFO
+        self.fields = self.fields if not 'fields' in params else [x.strip() for x in params['fields'].split(",")]
 
     def serve(self, data: dict):
         d = {k: data.get(k,"N/A") for k in self.fields}
