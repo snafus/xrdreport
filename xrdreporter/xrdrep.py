@@ -14,6 +14,7 @@ from pathlib import Path
 from threading import Lock
 from xml.dom import minidom
 
+import xrdreporter
 from requestHandlers import MyUDPRequestHandler
 from observers import FileObserver, LoggerObserver, SummaryLoggerObserver, ElasticSearchObserver, InfluxDB2Observer
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process and report output from xrd.report messages')
     parser.add_argument('-c','--config', type=Path, default=None, help='ini config file for Observer connection params, etc.')
 
-    # parser.add_argument('-p','--port', default=2036, type=int, help='server port number to listen on')
+    #parser.add_argument('-p','--port', default=None, type=int, help='server port number to listen on')
     # parser.add_argument('-a','--address', default="127.0.0.1", type=str, help='server listen address')
     parser.add_argument('-d','--debug',help='Enable additional logging',action='store_true')
     parser.add_argument('-l','--log',help='Send all logging to a dedicated file',dest='logfile',default=None)
@@ -76,9 +77,9 @@ if __name__ == "__main__":
 
     MyUDPRequestHandler.do_deltas = args.deltas
     # register observers against the handler. These send the process output elsewhere
-    # MyUDPRequestHandler.observers.append(SummaryLoggerObserver({'level':'INFO'}))
-    # if args.debug:
-    #     MyUDPRequestHandler.observers.append(LoggerObserver({'level':'DEBUG'}))
+    if args.debug and not args.config:
+        # register a default handler if no config, and debug mode
+        MyUDPRequestHandler.observers.append(SummaryLoggerObserver({'level':'INFO'}))
     # # dynamic loading of any components specified in the config file
     if args.config:
         MyUDPRequestHandler.observers.extend( create_observers(config) )
@@ -89,7 +90,10 @@ if __name__ == "__main__":
 
 
     # prepare and start the loop 
-    ServerAddress = (config['SERVER'].get('address'), config['SERVER'].getint('port'))
+    if args.config:
+        ServerAddress = (config['SERVER'].get('address'), config['SERVER'].getint('port'))
+    else:
+        ServerAddress = ('0.0.0.0', 9931)
     # Create a Server Instance using context manager
     # Each request is processed through a different thread
     with socketserver.ThreadingUDPServer(ServerAddress, MyUDPRequestHandler) as UDPServerObject:

@@ -173,7 +173,7 @@ class InfluxDB2Observer(Observer):
         client = influxdbv1.InfluxDBClient(**self.connection_param)
         client.write_points(data)
         client.close()
-        
+
 
 
 

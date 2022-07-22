@@ -13,5 +13,5 @@ setup(
     classifiers =['Programming Language :: Python :: 3','License :: OSI Approved :: MIT License'],
     packages = ['xrdreporter'],
     python_requires = '>=3.6',
-    scripts = ['xrdreporter/xrdreporter.py'],
+    scripts = ['xrdreporter/xrdrep.py'],
 )
