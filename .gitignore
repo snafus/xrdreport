@@ -3,5 +3,6 @@ __pycache__
 /dist
 /build
 config.cfg
+secrets.cfg
 *.json
 *.egg-info

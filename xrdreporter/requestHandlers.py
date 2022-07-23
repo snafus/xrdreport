@@ -8,6 +8,7 @@ from numbers import Number
 from xml.dom import minidom
 
 from xrdreporter.observers import Observer
+from xrdreporter.xrdLabels import XrdKey
 
 
 
@@ -63,7 +64,36 @@ def filter_stats(stats: dict, re_includes, re_excludes):
                 continue # passed at least one match
     return new_stats
 
+def augment_raltier1(stats: dict):
+    """Specific addtions/changes for the tier-1 configuration"""
+    
+    new_stats = dict(stats)
 
+    host = stats.get(XrdKey.INFO_HOST, "")
+    if 'nubes' in host:
+        new_stats['host_type'] = 'VM'
+    elif 'lcg' in host:
+        # in current setup WN containers have a random hostname
+        # this will have no effect
+        new_stats['host_type'] = 'WN'
+    elif 'ceph-dev' in host:
+        new_stats['host_type'] = 'gateway-dev'
+    elif 'ceph-' in host:
+        new_stats['host_type'] = 'gateway'
+    elif 'eos' in host:
+        new_stats['host_type'] = 'eos'
+    elif 'cta' in host:
+        new_stats['host_type'] = 'cta'
+    else:
+        new_stats['host_type'] = 'unknown'
+
+    # special hack for WN naming
+    if (XrdKey.INFO_NAME in stats and stats[XrdKey.INFO_NAME] == 'ceph' and 
+                                      stats[XrdKey.INFO_PORT] == 1094 ):
+        #Make sure that the proxy instance has the correct label
+        new_stats[XrdKey.INFO_NAME] = 'proxy'
+
+    return new_stats
 
 
 class MyUDPRequestHandler(socketserver.DatagramRequestHandler):
@@ -123,6 +153,9 @@ class MyUDPRequestHandler(socketserver.DatagramRequestHandler):
             raise(e)
 
         stats = filter_stats(stats, self._include_fields, self._exclude_fields)
+
+        # special hacks for the tier1
+        stats = augment_raltier1(stats)
 
         if self.do_deltas:
             # calculate the deltas, and set stats to new dict

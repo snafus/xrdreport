@@ -126,7 +126,7 @@ class InfluxDB2Observer(Observer):
     def __init__(self, params: dict):
         self.measurement = params['measurement'] # influx measurement name
         self.tags = [XrdKey.INFO_HOST, XrdKey.INFO_PORT, XrdKey.INFO_NAME, 
-                XrdKey.SITE, XrdKey.PGM,XrdKey.VER]
+                XrdKey.SITE, XrdKey.PGM,XrdKey.VER,'host_type']
         self.excluded = self.tags + [XrdKey.SRC, XrdKey.INS, XrdKey.PID]
         if 'api' in params and params['api'] == 'v1':
             self.api = 'v1'
@@ -170,9 +170,13 @@ class InfluxDB2Observer(Observer):
 
         # with influxdbv1.InfluxDBClient(**self.connection_param) as client:
         #     client.write_points(data)
-        client = influxdbv1.InfluxDBClient(**self.connection_param)
-        client.write_points(data)
-        client.close()
+        try:
+            client = influxdbv1.InfluxDBClient(**self.connection_param)
+            client.write_points(data)
+        except influxdbv1.exceptions.InfluxDBClientError as e:
+            print(e)
+        finally:
+            client.close()
 
 
 

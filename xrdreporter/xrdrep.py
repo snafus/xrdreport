@@ -49,7 +49,8 @@ def create_observers(config):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Process and report output from xrd.report messages')
-    parser.add_argument('-c','--config', type=Path, default=None, help='ini config file for Observer connection params, etc.')
+    parser.add_argument('-c','--config', type=Path, default=None, nargs='*', 
+                                         help='ini config file for Observer connection params, etc.')
 
     #parser.add_argument('-p','--port', default=None, type=int, help='server port number to listen on')
     # parser.add_argument('-a','--address', default="127.0.0.1", type=str, help='server listen address')
@@ -68,6 +69,7 @@ if __name__ == "__main__":
                     )
 
     if args.config is not None:
+        logging.debug("Config files: {}".format(args.config))
         config = configparser.ConfigParser()
         config.read(args.config)
 
