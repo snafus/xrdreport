@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'xrdreporter',
-    version = '0.0.1',
+    version = '0.0.3',
     author = 'James Walder',
     author_email = 'james.walder@stfc.ac.uk',
     description = 'Collate, process and report the metrics from the XrootD xrd.report monitoring',
@@ -13,5 +13,6 @@ setup(
     classifiers =['Programming Language :: Python :: 3','License :: OSI Approved :: MIT License'],
     packages = ['xrdreporter'],
     python_requires = '>=3.6',
+    install_requires = ['influxdb', 'influxdb-client'],
     scripts = ['xrdreporter/xrdrep.py'],
 )

@@ -7,7 +7,7 @@ import xml
 from numbers import Number
 from xml.dom import minidom
 
-from observers import Observer
+from xrdreporter.observers import Observer
 
 
 
@@ -34,7 +34,12 @@ def parse_dom(dataraw):
                 if type(j.firstChild) == xml.dom.minidom.Element:
                     #print (j, j.childNodes)
                     for k in j.childNodes:
-                        data[f'{tag_name}__{j.nodeName}__{k.nodeName}'] = to_numeric(k.firstChild.data)
+                        key = f'{tag_name}__{j.nodeName}__{k.nodeName}'
+                        if key == 'cache__rd__hits':
+                            # value has extraneous ">" in last character
+                            data[key] = to_numeric(re.match('(\d+)', k.firstChild.data).group(1))
+                        else:
+                            data[key] = to_numeric(k.firstChild.data)
                 else:
                     data[f'{tag_name}__{j.nodeName}'] = to_numeric(j.firstChild.data)
     except Exception as e:

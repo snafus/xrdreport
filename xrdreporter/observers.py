@@ -14,7 +14,7 @@ from socket import getfqdn
 from threading import Lock
 from typing import List
 
-from xrdLabels import XrdKey
+from xrdreporter.xrdLabels import XrdKey
 
 try:
     import influxdb_client

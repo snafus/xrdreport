@@ -15,14 +15,14 @@ from threading import Lock
 from xml.dom import minidom
 
 import xrdreporter
-from requestHandlers import MyUDPRequestHandler
-from observers import FileObserver, LoggerObserver, SummaryLoggerObserver, ElasticSearchObserver, InfluxDB2Observer
+from xrdreporter.requestHandlers import MyUDPRequestHandler
+from xrdreporter.observers import FileObserver, LoggerObserver, SummaryLoggerObserver, ElasticSearchObserver, InfluxDB2Observer
 
 
 def create_observers(config):
     """create a list of observers, based on input of external config-parser output"""
     import importlib
-    module = importlib.import_module('observers')
+    module = importlib.import_module('xrdreporter.observers')
 
     observers = []
     for section_name in config.sections():
