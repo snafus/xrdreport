@@ -125,9 +125,12 @@ class ElasticSearchObserver(Observer):
 class InfluxDB2Observer(Observer):
     def __init__(self, params: dict):
         self.measurement = params['measurement'] # influx measurement name
-        self.tags = [XrdKey.INFO_HOST, XrdKey.INFO_PORT, XrdKey.INFO_NAME, 
-                XrdKey.SITE, XrdKey.PGM,XrdKey.VER,'host_type']
-        self.excluded = self.tags + [XrdKey.SRC, XrdKey.INS, XrdKey.PID]
+        self.tags = [XrdKey.SRC, XrdKey.INS, 
+                XrdKey.SITE, XrdKey.PGM,XrdKey.VER,
+                XrdKey.INFO_HOST, XrdKey.INFO_PORT, XrdKey.INFO_NAME, 
+                XrdKey.OFS_ROLE,
+                'host_type']
+        self.excluded = self.tags + [XrdKey.PID]
         if 'api' in params and params['api'] == 'v1':
             self.api = 'v1'
             self.connection_param = {'host':params['host'],
