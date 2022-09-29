@@ -70,6 +70,11 @@ def augment_raltier1(stats: dict):
     new_stats = dict(stats)
 
     host = stats.get(XrdKey.INFO_HOST, "")
+    if type(host) != str:
+        logging.error(f'host {XrdKey.INFO_HOST} from {XrdKey.SRC} invalid')
+        host = str(stats.get(XrdKey.SRC, "")).split(":")[0]
+
+    
     if 'nubes' in host:
         new_stats['host_type'] = 'VM'
     elif 'lcg' in host:
