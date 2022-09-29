@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'xrdreporter',
-    version = '0.0.5',
+    version = '0.0.6',
     author = 'James Walder',
     author_email = 'james.walder@stfc.ac.uk',
     description = 'Collate, process and report the metrics from the XrootD xrd.report monitoring',
