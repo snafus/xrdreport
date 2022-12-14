@@ -44,7 +44,8 @@ def parse_dom(dataraw):
                 else:
                     data[f'{tag_name}__{j.nodeName}'] = to_numeric(j.firstChild.data)
     except Exception as e:
-        print(docs)
+        logging.debug("Error string parsing {}".format(dataraw[0:min(len(dataraw),50)]))
+        logging.error("Bad xml detected")
         raise e
     return data
 
@@ -149,12 +150,22 @@ class MyUDPRequestHandler(socketserver.DatagramRequestHandler):
                              self.client_address[0]))
 
         datagram = self.rfile.readline().decode('utf_8').strip()
+        logging.debug("Datagram starts: {}".format(datagram[0:min(len(datagram),20)]))
+        if datagram == "ping":
+            # self.socket.sendall("pong".encode('utf-8'))
+            logging.info("Ping sent from {}".format(self.client_address))
+            socket = self.request[1]
+            socket.sendto("pong".encode('utf-8'), self.client_address)
+            return 
+
+        if len(datagram) == 0:
+            logging.debug("Message with no data")
+            return
 
         # convert the xml into a dict
         try:
             stats = parse_dom(datagram)
         except Exception as e:
-            print (e)
             raise(e)
 
         stats = filter_stats(stats, self._include_fields, self._exclude_fields)
